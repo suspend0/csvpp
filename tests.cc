@@ -31,12 +31,12 @@ std::ostream &operator<<(std::ostream &os, const std::map<T1, T2> &map) {
   return os;
 }
 
-template <typename T>
-static void EXPECT_TRUE(T bool_conv) {
+template <typename T, typename S>
+static void EXPECT_TRUE(T& bool_conv, S& message) {
   if (bool_conv)
     return;
   ++errors;
-  std::cout << "[ERROR] " << bool_conv << "\n";
+  std::cout << "[ERROR] " << bool_conv << ":" << message << "\n";
 }
 
 template <typename T>
@@ -58,7 +58,7 @@ static void test_spaces() {
   parser.set_delim_char(' ');
   parser.Parse(csv_data);
   auto r = parser.Flush();
-  EXPECT_TRUE(r);
+  EXPECT_TRUE(r, parser.ErrorString());
 
   std::vector<std::string> expected = {"hi",  "there", "how",
                                        "are", "you",   "doing"};
@@ -79,7 +79,7 @@ static void test_grouping() {
       });
   parser.Parse(csv_data);
   auto r = parser.Flush();
-  EXPECT_TRUE(r);
+  EXPECT_TRUE(r, parser.ErrorString());
 
   std::map<std::string, int> expected{  //
       {"joe", 6},                       //
@@ -98,7 +98,7 @@ static void test_number_file() {
     tot_b += b;
   });
   auto r = parser.ParseFile("test_numbers.csv");
-  EXPECT_TRUE(r);
+  EXPECT_TRUE(r, parser.ErrorString());
 
   EXPECT_EQ(46, tot_a);
   EXPECT_EQ(512, tot_b);

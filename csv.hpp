@@ -6,18 +6,18 @@
 #include <sys/mman.h>
 
 namespace csv {
+
+namespace detail {
 struct Result {
   int number{0};
   std::string message{"success"};
-  operator bool() { return number == 0; }
+  operator bool() const { return number == 0; }
 };
 }
-std::ostream& operator<<(std::ostream& os, const csv::Result& r) {
+std::ostream& operator<<(std::ostream& os, const detail::Result& r) {
   os << r.message;
   return os;
 }
-
-namespace {
 class MappedFile {
  private:
   int fd_;
@@ -54,7 +54,7 @@ class MappedFile {
   const char* end() const { return data_ + size_; }
 
   operator bool() { return status; }
-  csv::Result status;
+  detail::Result status;
 
  private:
   void set_error() {
@@ -85,36 +85,35 @@ class CsvParser : public CsvParser<decltype(&Lamda::operator())> {
 
  public:
   CsvParser(Lamda func) : func(func) { csv_init(&parser, 0); }
+  ~CsvParser() { csv_free(&parser); }
+
+  //
   void set_delim_char(unsigned char delim) { parser.delim_char = delim; }
   void set_quote_char(unsigned char quote) { parser.quote_char = quote; }
 
   //
-  const Result& ParseFile(const std::string& filename) {
+  bool ParseFile(const std::string& filename) {
     MappedFile data(filename);
     if (!data) {
       return status_ = data.status;
     }
-    Parse(data.begin(), data.end());
-    Flush();
-    return status_;
+    return Parse(data.begin(), data.end()) && Flush();
   }
   template <typename T>
-  const Result& Parse(const T& str) {
+  bool Parse(const T& str) {
     return Parse(str.data(), str.data() + str.length());
   }
   template <typename It>
-  const Result& Parse(const It& begin, const It& end) {
+  bool Parse(const It& begin, const It& end) {
     csv_parse(&parser, begin, end - begin, on_field, on_record, this);
     return update_status();
   }
-  const Result& Flush() {
+  bool Flush() {
     csv_fini(&parser, on_field, on_record, this);
     return update_status();
   }
-  const std::string& ErrorString() { return csv_error(&parser); }
-  ~CsvParser() { csv_free(&parser); }
+  const std::string& ErrorString() { return status_.message; }
   operator bool() { return status_; }
-  const Result& status() { return status_; }
 
  private:
   static void on_field(void* data, size_t len, void* this_ptr) {
@@ -130,9 +129,9 @@ class CsvParser : public CsvParser<decltype(&Lamda::operator())> {
   csv_parser parser;
   void accept_row() { parent_type::accept_row(func); }
   Lamda func;
-  Result status_;
+  detail::Result status_;
 
-  const Result& update_status() {
+  const detail::Result& update_status() {
     if (status_.number == 0) {
       status_.number = parser.status;
       status_.message = csv_error(&parser);
