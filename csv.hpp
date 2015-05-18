@@ -78,19 +78,17 @@ struct gen_seq<0, Is...> : index<Is...> {};
 
 /* A C++ wrapper around libcsv, see `make_parser` below */
 namespace csv {
-template <typename Lamda,                    //
-          unsigned char delim_char_t = ',',  //
-          unsigned char quote_char_t = '"'>
+template <typename Lamda>
 class CsvParser : public CsvParser<decltype(&Lamda::operator())> {
   using parent_type = CsvParser<decltype(&Lamda::operator())>;
   using this_type = CsvParser<Lamda>;
 
  public:
-  CsvParser(Lamda func) : func(func) {
-    parser.delim_char = delim_char_t;
-    parser.quote_char = quote_char_t;
-    csv_init(&parser, 0);
-  }
+  CsvParser(Lamda func) : func(func) { csv_init(&parser, 0); }
+  void set_delim_char(unsigned char delim) { parser.delim_char = delim; }
+  void set_quote_char(unsigned char quote) { parser.quote_char = quote; }
+
+  //
   const Result& ParseFile(const std::string& filename) {
     MappedFile data(filename);
     if (!data) {

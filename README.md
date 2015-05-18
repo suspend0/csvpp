@@ -25,14 +25,14 @@ You can parse it with following code:
 
     std::map<std::string, int> groups;
     auto parser = csv::make_parser(
-      [&groups](int count, std::string name) {
+      [&groups](const int count, const std::string name) {
         groups[name] += count;
       });
     parser.ParseFile("/path/to/file");
 
 How it Works
 -------
-In inspects the provided lamba and builds a `std::tuple` with
+It inspects the provided lamba and builds a `std::tuple` with
 the same types.  Each field is converted from a string to the
 final type using `boost::lexical_cast`, and the provided lamda
 is called once per row.

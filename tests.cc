@@ -4,6 +4,19 @@
 
 int errors = 0;
 
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
+  os << "[";
+  for (typename std::vector<T>::const_iterator it = vec.begin();
+       it != vec.end();) {
+    os << *it;
+    for (++it; it != vec.end(); ++it) {
+      os << "," << *it;
+    }
+  }
+  os << "]";
+  return os;
+}
 template <typename T1, typename T2>
 std::ostream &operator<<(std::ostream &os, const std::map<T1, T2> &map) {
   os << "[";
@@ -34,6 +47,24 @@ static void EXPECT_EQ(T expected, T actual) {
   std::cout << "[ERROR] expected <" << expected << "> got <" << actual << ">\n";
 }
 
+static void test_spaces() {
+  std::string csv_data = "hi there\nhow are\nyou doing\n";
+  std::vector<std::string> words;
+  auto parser =
+      csv::make_parser([&words](const std::string a, const std::string b) {
+        words.push_back(a);
+        words.push_back(b);
+      });
+  parser.set_delim_char(' ');
+  parser.Parse(csv_data);
+  auto r = parser.Flush();
+  EXPECT_TRUE(r);
+
+  std::vector<std::string> expected = {"hi",  "there", "how",
+                                       "are", "you",   "doing"};
+  EXPECT_EQ(expected, words);
+}
+
 static void test_grouping() {
   std::string csv_data =  //
       "6,joe\n"           //
@@ -42,11 +73,12 @@ static void test_grouping() {
       "1,louise\n";
 
   std::map<std::string, int> groups;
-  auto parser = csv::make_parser(                             //
+  auto parser = csv::make_parser(                           //
       [&groups](const int count, const std::string name) {  //
-        groups[name] += count;                                //
+        groups[name] += count;                              //
       });
-  auto r = parser.Parse(csv_data);
+  parser.Parse(csv_data);
+  auto r = parser.Flush();
   EXPECT_TRUE(r);
 
   std::map<std::string, int> expected{  //
@@ -86,6 +118,7 @@ static void test_number_file() {
 int main(int, char **) {
   run(test_number_file);
   run(test_grouping);
+  run(test_spaces);
   std::cout << (errors ? "ERRORS!\n" : "Ok\n");
   return errors;
 }
