@@ -1,0 +1,91 @@
+#include "csv.hpp"
+#include <map>
+#include <iostream>
+
+int errors = 0;
+
+template <typename T1, typename T2>
+std::ostream &operator<<(std::ostream &os, const std::map<T1, T2> &map) {
+  os << "[";
+  for (typename std::map<T1, T2>::const_iterator it = map.begin();
+       it != map.end();) {
+    os << it->first << ":" << it->second;
+    for (++it; it != map.end(); ++it) {
+      os << "," << it->first << ":" << it->second;
+    }
+  }
+  os << "]";
+  return os;
+}
+
+template <typename T>
+static void EXPECT_TRUE(T bool_conv) {
+  if (bool_conv)
+    return;
+  ++errors;
+  std::cout << "[ERROR] " << bool_conv << "\n";
+}
+
+template <typename T>
+static void EXPECT_EQ(T expected, T actual) {
+  if (expected == actual)
+    return;
+  ++errors;
+  std::cout << "[ERROR] expected <" << expected << "> got <" << actual << ">\n";
+}
+
+static void test_grouping() {
+  std::string csv_data =  //
+      "6,joe\n"           //
+      "3,louise\n"        //
+      "2,mary\n"          //
+      "1,louise\n";
+
+  std::map<std::string, int> groups;
+  auto parser = csv::make_parser(                             //
+      [&groups](const int count, const std::string name) {  //
+        groups[name] += count;                                //
+      });
+  auto r = parser.Parse(csv_data);
+  EXPECT_TRUE(r);
+
+  std::map<std::string, int> expected{  //
+      {"joe", 6},                       //
+      {"mary", 2},                      //
+      {"louise", 4},                    //
+  };
+
+  EXPECT_EQ(expected, groups);
+}
+
+static void test_number_file() {
+  int tot_a = 0;
+  int tot_b = 0;
+  auto parser = csv::make_parser([&tot_a, &tot_b](int a, int b) {
+    tot_a += a;
+    tot_b += b;
+  });
+  auto r = parser.ParseFile("test_numbers.csv");
+  EXPECT_TRUE(r);
+
+  EXPECT_EQ(46, tot_a);
+  EXPECT_EQ(512, tot_b);
+}
+
+#define run(fp)                           \
+  std::cout << "[START] " << #fp << "\n"; \
+  try {                                   \
+    fp();                                 \
+  }                                       \
+  catch (const std::exception &e) {       \
+    std::cerr << e.what() << "\n";        \
+    throw;                                \
+  }                                       \
+  std::cout << "[END  ] " << #fp << "\n";
+
+int main(int, char **) {
+  run(test_number_file);
+  run(test_grouping);
+  std::cout << (errors ? "ERRORS!\n" : "Ok\n");
+  return errors;
+}
