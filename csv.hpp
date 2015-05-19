@@ -90,6 +90,7 @@ class CsvParser : public CsvParser<decltype(&Lamda::operator())> {
   //
   void set_delim_char(unsigned char delim) { parser.delim_char = delim; }
   void set_quote_char(unsigned char quote) { parser.quote_char = quote; }
+  void set_skip_header() { skip_next_row_ = true; }
 
   //
   bool ParseFile(const std::string& filename) {
@@ -127,12 +128,20 @@ class CsvParser : public CsvParser<decltype(&Lamda::operator())> {
 
  private:
   csv_parser parser;
-  void accept_row() { parent_type::accept_row(func); }
-  Lamda func;
+  const Lamda func;
   detail::Result status_;
+  bool skip_next_row_{false};
 
+ private:
+  void accept_row() {
+    if (skip_next_row_) {
+      skip_next_row_ = false;
+    } else {
+      parent_type::accept_row(func);
+    }
+  }
   const detail::Result& update_status() {
-    if (status_.number == 0) {
+    if (status_.number == 0 && parser.status != 0) {
       status_.number = parser.status;
       status_.message = csv_error(&parser);
     }
