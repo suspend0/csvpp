@@ -30,6 +30,18 @@ You can parse it with following code:
       });
     parser.ParseFile("/path/to/file");
 
+Or, with a functor
+
+    class Grouper {
+      std::map<std::string, int> groups;
+      void operator()(const int count, const std::string name) {
+        groups[name] += count;
+      }
+    };
+    Grouper grouper;
+    auto parser = csv::make_parser(grouper);
+    parser.ParseFile("/path/to/file");
+
 How it Works
 -------
 It inspects the provided lamba and builds a `std::tuple` with
@@ -44,11 +56,8 @@ anything crazy and should be fast enough.
 
 Limitations
 -------
- 1. Only lambdas, no functor objects or other things.  B/c I
-    don't know C++ very well and I couldn't figure those out
-    while maintining support for lamdas in a reasonable way.
- 2. Can't declare the lamba with reference parameters. Working
+ 1. Can't declare the lamba with reference parameters. Working
     on this one.
- 3. No real support for files with a variable number of columns,
+ 2. No real support for files with a variable number of columns,
     reading a subset of columns, etc.
 

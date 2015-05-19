@@ -1,6 +1,7 @@
 #include "csv.hpp"
 #include <map>
 #include <iostream>
+#include <boost/noncopyable.hpp>
 
 int errors = 0;
 
@@ -32,7 +33,7 @@ std::ostream &operator<<(std::ostream &os, const std::map<T1, T2> &map) {
 }
 
 template <typename T, typename S>
-static void EXPECT_TRUE(T& bool_conv, S& message) {
+static void EXPECT_TRUE(T &bool_conv, S &message) {
   if (bool_conv)
     return;
   ++errors;
@@ -50,11 +51,11 @@ static void EXPECT_EQ(T expected, T actual) {
 static void test_spaces() {
   std::string csv_data = "hi there\nhow are\nyou doing\n";
   std::vector<std::string> words;
-  auto parser =
-      csv::make_parser([&words](const std::string a, const std::string b) {
-        words.push_back(a);
-        words.push_back(b);
-      });
+  auto f = [&words](const std::string a, const std::string b) {
+    words.push_back(a);
+    words.push_back(b);
+  };
+  auto parser = csv::make_parser(f);
   parser.set_delim_char(' ');
   parser.Parse(csv_data);
   auto r = parser.Flush();
@@ -104,6 +105,39 @@ static void test_number_file() {
   EXPECT_EQ(512, tot_b);
 }
 
+static void test_functor() {
+  struct Adder : boost::noncopyable {
+    int tot_a = 0;
+    int tot_b = 0;
+    void operator()(int a, int b) {
+      tot_a += a;
+      tot_b += b;
+    }
+  };
+  Adder adder;
+  auto parser = csv::make_parser(adder);
+  auto r = parser.ParseFile("test_numbers.csv");
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  EXPECT_EQ(46, adder.tot_a);
+  EXPECT_EQ(512, adder.tot_b);
+}
+
+static int free_func_total_a = 0;
+static int free_func_total_b = 0;
+void free_func(int a, int b) {
+  free_func_total_a += a;
+  free_func_total_b += b;
+}
+static void test_free_func() {
+  auto parser = csv::make_parser(free_func);
+  auto r = parser.ParseFile("test_numbers.csv");
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  EXPECT_EQ(46, free_func_total_a);
+  EXPECT_EQ(512, free_func_total_b);
+}
+
 #define run(fp)                           \
   std::cout << "[START] " << #fp << "\n"; \
   try {                                   \
@@ -119,6 +153,8 @@ int main(int, char **) {
   run(test_number_file);
   run(test_grouping);
   run(test_spaces);
+  run(test_functor);
+  run(test_free_func);
   std::cout << (errors ? "ERRORS!\n" : "Ok\n");
   return errors;
 }
