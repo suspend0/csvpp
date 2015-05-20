@@ -65,6 +65,21 @@ static void test_spaces() {
   EXPECT_EQ(expected, words);
 }
 
+static void test_quote_escaping() {
+  std::string csv_data = "13,'Tiki,'\n14,'Let''s get busy'\n";
+  std::map<int, std::string> words;
+  auto f = [&words](const int &a, const std::string &b) {
+    words[a] = b;
+  };
+  auto parser = csv::make_parser(f);
+  parser.set_quote_char('\'');
+  auto r = parser.Parse(csv_data) && parser.Finish();
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  std::map<int, std::string> expected = {{13, "Tiki,"},{14,"Let's get busy"}};
+  EXPECT_EQ(expected, words);
+}
+
 static void test_grouping() {
   std::string csv_data =  //
       "6,joe\n"           //
@@ -151,6 +166,7 @@ int main(int, char **) {
   run(test_number_file);
   run(test_grouping);
   run(test_spaces);
+  run(test_quote_escaping);
   run(test_functor);
   run(test_free_func);
   std::cout << (errors ? "ERRORS!\n" : "Ok\n");
