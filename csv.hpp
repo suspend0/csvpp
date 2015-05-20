@@ -172,7 +172,7 @@ class CsvParser {
     if (!data) {
       return status = data.status;
     }
-    return Parse(data.begin(), data.end()) && Flush();
+    return Parse(data.begin(), data.end()) && Finish();
   }
   template <typename T>
   bool Parse(const T& str) {
@@ -183,7 +183,7 @@ class CsvParser {
     csv_parse(&parser, begin, end - begin, on_field, on_record, this);
     return update_status();
   }
-  bool Flush() {
+  bool Finish() {
     csv_fini(&parser, on_field, on_record, this);
     return update_status();
   }

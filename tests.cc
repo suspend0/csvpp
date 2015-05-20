@@ -57,8 +57,7 @@ static void test_spaces() {
   };
   auto parser = csv::make_parser(f);
   parser.set_delim_char(' ');
-  parser.Parse(csv_data);
-  auto r = parser.Flush();
+  auto r = parser.Parse(csv_data) && parser.Finish();
   EXPECT_TRUE(r, parser.ErrorString());
 
   std::vector<std::string> expected = {"hi",  "there", "how",
@@ -78,8 +77,7 @@ static void test_grouping() {
       [&groups](const int count, const std::string name) {  //
         groups[name] += count;                              //
       });
-  parser.Parse(csv_data);
-  auto r = parser.Flush();
+  auto r = parser.Parse(csv_data) && parser.Finish();
   EXPECT_TRUE(r, parser.ErrorString());
 
   std::map<std::string, int> expected{  //
