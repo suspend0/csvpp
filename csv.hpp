@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#include <typeinfo>
+#include <iostream>
+
 namespace csv {
 namespace detail {
 
@@ -121,7 +124,7 @@ class fields<R(Args...)> {
   }
 
  private:
-  std::tuple<Args...> values;
+  std::tuple<typename std::decay<Args>::type...> values;
   std::vector<mutator_t> mutators;
   size_t current_field = 0;
 

@@ -56,8 +56,6 @@ anything crazy and should be fast enough.
 
 Limitations
 -------
- 1. Can't declare the lamba with reference parameters. Working
-    on this one.
- 2. No real support for files with a variable number of columns,
+ 1. No real support for files with a variable number of columns,
     reading a subset of columns, etc.
 

@@ -51,7 +51,7 @@ static void EXPECT_EQ(T expected, T actual) {
 static void test_spaces() {
   std::string csv_data = "hi there\nhow are\nyou doing\n";
   std::vector<std::string> words;
-  auto f = [&words](const std::string a, const std::string b) {
+  auto f = [&words](const std::string &a, const std::string &b) {
     words.push_back(a);
     words.push_back(b);
   };
