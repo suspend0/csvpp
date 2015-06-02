@@ -109,7 +109,9 @@ class fields<R(Args...)> {
         typename detail::sequence::generate<sizeof...(Args)>::index());
   }
   void accept_field(const char* buf, size_t len) {
-    mutators.at(current_field)(buf, len);
+    if (current_field < mutators.size()) {
+      mutators[current_field](buf, len);
+    }
     ++current_field;
   }
   template <typename F>

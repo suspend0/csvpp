@@ -136,6 +136,29 @@ static void test_functor() {
   EXPECT_EQ(512, adder.tot_b);
 }
 
+template<typename T> void template_func(const std::string&path, T& command) {
+  auto parser = csv::make_parser(command);
+  auto r = parser.ParseFile(path);
+  EXPECT_TRUE(r, parser.ErrorString());
+}
+
+static void test_template_func() {
+  struct Adder : boost::noncopyable {
+    int tot_a = 0;
+    int tot_b = 0;
+    void operator()(int a, int b) {
+      tot_a += a;
+      tot_b += b;
+    }
+  };
+  Adder adder;
+  template_func("test_numbers.csv", adder);
+
+  EXPECT_EQ(46, adder.tot_a);
+  EXPECT_EQ(512, adder.tot_b);
+}
+
+
 static int free_func_total_a = 0;
 static int free_func_total_b = 0;
 void free_func(int a, int b) {
@@ -168,6 +191,7 @@ int main(int, char **) {
   run(test_spaces);
   run(test_quote_escaping);
   run(test_functor);
+  run(test_template_func);
   run(test_free_func);
   std::cout << (errors ? "ERRORS!\n" : "Ok\n");
   return errors;
