@@ -6,7 +6,6 @@
 #include <sys/mman.h>
 
 #include <typeinfo>
-#include <iostream>
 
 namespace csv {
 namespace detail {
@@ -183,6 +182,15 @@ class CsvParser {
   template <typename It>
   bool Parse(const It& begin, const It& end) {
     csv_parse(&parser, begin, end - begin, on_field, on_record, this);
+    return update_status();
+  }
+  template <typename IoStream>
+  bool Parse(IoStream& input) {
+    char buf[4096];
+    do {
+      input.read(buf, sizeof(buf));
+      csv_parse(&parser, buf, input.gcount(), on_field, on_record, this);
+    } while (input && update_status());
     return update_status();
   }
   bool Finish() {
