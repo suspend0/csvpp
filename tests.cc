@@ -6,7 +6,7 @@
 int errors = 0;
 
 template <typename T>
-std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
   os << "[";
   for (typename std::vector<T>::const_iterator it = vec.begin();
        it != vec.end();) {
@@ -19,7 +19,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
   return os;
 }
 template <typename T1, typename T2>
-std::ostream &operator<<(std::ostream &os, const std::map<T1, T2> &map) {
+std::ostream& operator<<(std::ostream& os, const std::map<T1, T2>& map) {
   os << "[";
   for (typename std::map<T1, T2>::const_iterator it = map.begin();
        it != map.end();) {
@@ -33,7 +33,7 @@ std::ostream &operator<<(std::ostream &os, const std::map<T1, T2> &map) {
 }
 
 template <typename T, typename S>
-static void EXPECT_TRUE(T &bool_conv, S &message) {
+static void EXPECT_TRUE(T& bool_conv, S& message) {
   if (bool_conv)
     return;
   ++errors;
@@ -51,7 +51,7 @@ static void EXPECT_EQ(T expected, T actual) {
 static void test_spaces() {
   std::string csv_data = "hi there\nhow are\nyou doing\n";
   std::vector<std::string> words;
-  auto f = [&words](const std::string &a, const std::string &b) {
+  auto f = [&words](const std::string& a, const std::string& b) {
     words.push_back(a);
     words.push_back(b);
   };
@@ -68,15 +68,13 @@ static void test_spaces() {
 static void test_quote_escaping() {
   std::string csv_data = "13,'Tiki,'\n14,'Let''s get busy'\n";
   std::map<int, std::string> words;
-  auto f = [&words](const int &a, const std::string &b) {
-    words[a] = b;
-  };
+  auto f = [&words](const int& a, const std::string& b) { words[a] = b; };
   auto parser = csv::make_parser(f);
   parser.set_quote_char('\'');
   auto r = parser.Parse(csv_data) && parser.Finish();
   EXPECT_TRUE(r, parser.ErrorString());
 
-  std::map<int, std::string> expected = {{13, "Tiki,"},{14,"Let's get busy"}};
+  std::map<int, std::string> expected = {{13, "Tiki,"}, {14, "Let's get busy"}};
   EXPECT_EQ(expected, words);
 }
 
@@ -136,7 +134,8 @@ static void test_functor() {
   EXPECT_EQ(512, adder.tot_b);
 }
 
-template<typename T> void template_func(const std::string&path, T& command) {
+template <typename T>
+void template_func(const std::string& path, T& command) {
   auto parser = csv::make_parser(command);
   auto r = parser.ParseFile(path);
   EXPECT_TRUE(r, parser.ErrorString());
@@ -158,7 +157,6 @@ static void test_template_func() {
   EXPECT_EQ(512, adder.tot_b);
 }
 
-
 static int free_func_total_a = 0;
 static int free_func_total_b = 0;
 void free_func(int a, int b) {
@@ -166,6 +164,8 @@ void free_func(int a, int b) {
   free_func_total_b += b;
 }
 static void test_free_func() {
+  free_func_total_a = 0;
+  free_func_total_b = 0;
   auto parser = csv::make_parser(free_func);
   auto r = parser.ParseFile("test_numbers.csv");
   EXPECT_TRUE(r, parser.ErrorString());
@@ -173,19 +173,27 @@ static void test_free_func() {
   EXPECT_EQ(46, free_func_total_a);
   EXPECT_EQ(512, free_func_total_b);
 }
+static void test_parse_stream() {
+  free_func_total_a = 0;
+  free_func_total_b = 0;
+  std::istringstream input("1,2\n3,4\n");
+  auto parser = csv::make_parser(free_func);
+  auto r = parser.ParseStream(input);
+  EXPECT_TRUE(r, parser.ErrorString());
+}
 
 #define run(fp)                           \
   std::cout << "[START] " << #fp << "\n"; \
   try {                                   \
     fp();                                 \
   }                                       \
-  catch (const std::exception &e) {       \
+  catch (const std::exception& e) {       \
     std::cerr << e.what() << "\n";        \
     throw;                                \
   }                                       \
   std::cout << "[END  ] " << #fp << "\n";
 
-int main(int, char **) {
+int main(int, char**) {
   run(test_number_file);
   run(test_grouping);
   run(test_spaces);
@@ -193,6 +201,7 @@ int main(int, char **) {
   run(test_functor);
   run(test_template_func);
   run(test_free_func);
+  run(test_parse_stream);
   std::cout << (errors ? "ERRORS!\n" : "Ok\n");
   return errors;
 }

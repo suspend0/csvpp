@@ -185,7 +185,7 @@ class CsvParser {
     return update_status();
   }
   template <typename IoStream>
-  bool Parse(IoStream& input) {
+  bool ParseStream(IoStream& input) {
     char buf[4096];
     do {
       input.read(buf, sizeof(buf));
