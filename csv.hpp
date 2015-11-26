@@ -107,27 +107,24 @@ class fields<R(Args...)> {
     setupFieldHandlers(
         typename detail::sequence::generate<sizeof...(Args)>::index());
   }
-  void accept_field(const char* buf, size_t len) {
-    if (current_field < mutators.size()) {
-      mutators[current_field](buf, len);
+  void accept_field(size_t field_pos, const char* buf, size_t len) {
+    if (field_pos < mutators.size()) {
+      mutators[field_pos](buf, len);
     }
-    ++current_field;
   }
   template <typename F>
-  void accept_row(F& func) {
-    current_field = 0;
-    call_func(func,
+  void accept_row(F& sink) {
+    call_func(sink,
               typename detail::sequence::generate<sizeof...(Args)>::index());
   }
   template <typename F, int... S>
-  void call_func(F& func, detail::sequence::index<S...>) {
-    func(std::get<S>(values)...);
+  void call_func(F& sink, detail::sequence::index<S...>) {
+    sink(std::get<S>(values)...);
   }
 
  private:
   std::tuple<typename std::decay<Args>::type...> values;
   std::vector<mutator_t> mutators;
-  size_t current_field = 0;
 
  private:
   template <int... S>
@@ -159,13 +156,34 @@ class CsvParser {
   using this_type = CsvParser<F>;
 
  public:
-  CsvParser(const F& func) : func{func} { csv_init(&parser, 0); }
+  // return true if field should cause row to be ignored
+  using filter_function_type =
+      std::function<bool(size_t field_num, const char* buf, size_t len)>;
+  CsvParser(const F& sink) : sink{sink} { csv_init(&parser, 0); }
   ~CsvParser() { csv_free(&parser); }
 
   //
   void set_delim_char(unsigned char delim) { parser.delim_char = delim; }
   void set_quote_char(unsigned char quote) { parser.quote_char = quote; }
-  void set_skip_header() { skip_next_row = true; }
+  void set_skip_header() { skip_row = true; }
+  void set_comment_mark(const std::string& prefix) {
+    auto is_comment = [prefix](size_t field_num, const char* buf, size_t len) {
+      return field_num == 0 &&          //
+             len >= prefix.length() &&  //
+             std::equal(prefix.begin(), prefix.end(), buf);
+    };
+    return add_row_filter(is_comment);
+  }
+  /* Limitation: Fields are coerced to their types as they are
+   * encountered, so these filters can't prevent conversion by
+   * looking at data later in the same row. */
+  void add_row_filter(const filter_function_type filter) {
+    auto orig = filter_func;
+    filter_func = [orig, filter](size_t field_num, const char* buf,
+                                 size_t len) {
+      return orig(field_num, buf, len) || filter(field_num, buf, len);
+    };
+  }
 
   //
   bool ParseFile(const std::string& filename) {
@@ -213,20 +231,28 @@ class CsvParser {
  private:
   detail::meta::fields<F> fields;
   csv_parser parser;
-  const F& func;
+  const F& sink;
   detail::Result status;
-  bool skip_next_row{false};
+  filter_function_type filter_func = [](size_t, const char*,
+                                        size_t) { return false; };
+  bool skip_row{false};
+  size_t current_field = 0;
 
  private:
   void accept_field(const char* buf, size_t len) {
-    fields.accept_field(buf, len);
+    skip_row = skip_row || filter_func(current_field, buf, len);
+    if (!skip_row) {
+      fields.accept_field(current_field, buf, len);
+    }
+    ++current_field;
   }
   void accept_row() {
-    if (skip_next_row) {
-      skip_next_row = false;
+    if (!skip_row) {
+      fields.accept_row(sink);
     } else {
-      fields.accept_row(func);
+      skip_row = false;
     }
+    current_field = 0;
   }
   const detail::Result& update_status() {
     if (status.number == 0 && parser.status != 0) {

@@ -65,6 +65,57 @@ static void test_spaces() {
   EXPECT_EQ(expected, words);
 }
 
+static void test_header() {
+  std::string csv_data = "name num\nlarry 1\nmary 3\n";
+  std::map<std::string, uint32_t> values;
+  auto f = [&values](const std::string& a, const uint32_t b) { values[a] = b; };
+  auto parser = csv::make_parser(f);
+  parser.set_skip_header();
+  parser.set_delim_char(' ');
+  parser.set_comment_mark("#");
+  auto r = parser.Parse(csv_data) && parser.Finish();
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  std::map<std::string, uint32_t> expected = {{"larry", 1}, {"mary", 3}};
+  EXPECT_EQ(expected, values);
+}
+
+static void test_comments() {
+  std::string csv_data = "hi there\n#how are\nyou doing\n";
+  std::vector<std::string> words;
+  auto f = [&words](const std::string& a, const std::string& b) {
+    words.push_back(a);
+    words.push_back(b);
+  };
+  auto parser = csv::make_parser(f);
+  parser.set_delim_char(' ');
+  parser.set_comment_mark("#");
+  auto r = parser.Parse(csv_data) && parser.Finish();
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  std::vector<std::string> expected = {"hi", "there", "you", "doing"};
+  EXPECT_EQ(expected, words);
+}
+
+static void test_filter() {
+  std::string csv_data = "hi there\nhow are\nyou doing\n";
+  std::vector<std::string> words;
+  auto f = [&words](const std::string& a, const std::string& b) {
+    words.push_back(a);
+    words.push_back(b);
+  };
+  auto parser = csv::make_parser(f);
+  parser.set_delim_char(' ');
+  parser.add_row_filter([](size_t, const char* buf, size_t len) {
+    return len == 3 && std::equal(buf, buf + len, "how");
+  });
+  auto r = parser.Parse(csv_data) && parser.Finish();
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  std::vector<std::string> expected = {"hi", "there", "you", "doing"};
+  EXPECT_EQ(expected, words);
+}
+
 static void test_quote_escaping() {
   std::string csv_data = "13,'Tiki,'\n14,'Let''s get busy'\n";
   std::map<int, std::string> words;
@@ -197,6 +248,9 @@ int main(int, char**) {
   run(test_number_file);
   run(test_grouping);
   run(test_spaces);
+  run(test_header);
+  run(test_comments);
+  run(test_filter);
   run(test_quote_escaping);
   run(test_functor);
   run(test_template_func);
