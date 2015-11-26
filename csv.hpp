@@ -209,7 +209,7 @@ class CsvParser {
       input.read(buf, sizeof(buf));
       csv_parse(&parser, buf, input.gcount(), on_field, on_record, this);
     } while (input && update_status());
-    return update_status();
+    return Finish();
   }
   bool Finish() {
     csv_fini(&parser, on_field, on_record, this);

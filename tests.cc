@@ -231,6 +231,8 @@ static void test_parse_stream() {
   auto parser = csv::make_parser(free_func);
   auto r = parser.ParseStream(input);
   EXPECT_TRUE(r, parser.ErrorString());
+  EXPECT_EQ(4, free_func_total_a);
+  EXPECT_EQ(6, free_func_total_b);
 }
 
 #define run(fp)                           \
