@@ -128,10 +128,14 @@ static void test_accept_filter() {
   parser.set_delim_char(' ');
   parser.add_row_filter([filter_term](size_t field_num, const char* buf,
                                       size_t len) {
-    if (field_num > 0)
-      return false;
-    return !(len == filter_term.size() &&
-             std::equal(buf, buf + len, filter_term.data()));
+    if (field_num > 0) {
+      return csv::ROW_OK;
+    } else if (len == filter_term.size() &&
+               std::equal(buf, buf + len, filter_term.data())) {
+      return csv::ROW_OK;
+    } else {
+      return csv::ROW_DROP;
+    }
   });
   auto r = parser.Parse(csv_data) && parser.Finish();
   EXPECT_TRUE(r, parser.ErrorString());

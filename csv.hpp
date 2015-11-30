@@ -151,14 +151,22 @@ class fields<R(Args...)> {
 }  // detail
 
 /* A C++ wrapper around libcsv, see `make_parser` below */
+struct filter_result {
+  bool drop;
+  constexpr filter_result(bool b) : drop(b) {}
+  operator bool() const { return drop; }
+};
+static constexpr filter_result ROW_DROP{true};
+static constexpr filter_result ROW_OK{false};
+
 template <typename F>
 class CsvParser {
   using this_type = CsvParser<F>;
 
  public:
   // return true if field should cause row to be ignored
-  using filter_function_type =
-      std::function<bool(size_t field_num, const char* buf, size_t len)>;
+  using filter_function_type = std::function<
+      filter_result(size_t field_num, const char* buf, size_t len)>;
   CsvParser(const F& sink) : sink{sink} { csv_init(&parser, 0); }
   ~CsvParser() { csv_free(&parser); }
 
@@ -234,7 +242,7 @@ class CsvParser {
   const F& sink;
   detail::Result status;
   filter_function_type filter_func = [](size_t, const char*,
-                                        size_t) { return false; };
+                                        size_t) { return ROW_OK; };
   bool skip_row{false};
   size_t current_field = 0;
 
