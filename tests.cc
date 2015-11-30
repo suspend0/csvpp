@@ -116,6 +116,30 @@ static void test_filter() {
   EXPECT_EQ(expected, words);
 }
 
+static void test_accept_filter() {
+  std::string filter_term = "how";
+  std::string csv_data = "hi there\nhow are\nyou doing\n";
+  std::vector<std::string> words;
+  auto f = [&words](const std::string& a, const std::string& b) {
+    words.push_back(a);
+    words.push_back(b);
+  };
+  auto parser = csv::make_parser(f);
+  parser.set_delim_char(' ');
+  parser.add_row_filter([filter_term](size_t field_num, const char* buf,
+                                      size_t len) {
+    if (field_num > 0)
+      return false;
+    return !(len == filter_term.size() &&
+             std::equal(buf, buf + len, filter_term.data()));
+  });
+  auto r = parser.Parse(csv_data) && parser.Finish();
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  std::vector<std::string> expected = {"how", "are"};
+  EXPECT_EQ(expected, words);
+}
+
 static void test_quote_escaping() {
   std::string csv_data = "13,'Tiki,'\n14,'Let''s get busy'\n";
   std::map<int, std::string> words;
@@ -253,6 +277,7 @@ int main(int, char**) {
   run(test_header);
   run(test_comments);
   run(test_filter);
+  run(test_accept_filter);
   run(test_quote_escaping);
   run(test_functor);
   run(test_template_func);
