@@ -40,6 +40,14 @@ static void EXPECT_TRUE(T& bool_conv, S& message) {
   std::cout << "[ERROR] " << bool_conv << ":" << message << "\n";
 }
 
+template <typename S>
+static void EXPECT_TRUEB(bool test, S& message) {
+  if (test)
+    return;
+  ++errors;
+  std::cout << "[ERROR] " << message << "\n";
+}
+
 template <typename T>
 static void EXPECT_EQ(T expected, T actual) {
   if (expected == actual)
@@ -262,6 +270,42 @@ static void test_parse_stream() {
   EXPECT_EQ(4, free_func_total_a);
   EXPECT_EQ(6, free_func_total_b);
 }
+static void test_bad_cast() {
+  free_func_total_a = 0;
+  free_func_total_b = 0;
+  std::istringstream input("1,hi\n3,4\n");
+  auto parser = csv::make_parser(free_func);
+  parser.set_error_func([](size_t, size_t, const std::string&,
+                           const std::exception_ptr) {
+    return csv::ROW_DROP;  // squash stderr
+  });
+  auto r = parser.ParseStream(input);
+  EXPECT_TRUE(r, parser.ErrorString());
+  EXPECT_EQ(3, free_func_total_a);
+  EXPECT_EQ(4, free_func_total_b);
+}
+static void test_bad_cast_callback() {
+  free_func_total_a = 0;
+  free_func_total_b = 0;
+  std::istringstream input("1,hi\n3,4\n");
+  auto parser = csv::make_parser(free_func);
+  bool handler_called = false;
+  parser.set_error_func([&handler_called](size_t row, size_t column,
+                                          const std::string& message,
+                                          const std::exception_ptr ex) {
+    handler_called = true;
+    EXPECT_EQ(size_t(1), row);
+    EXPECT_EQ(size_t(2), column);
+    EXPECT_TRUEB(!message.empty(), "empty message");
+    EXPECT_TRUEB(bool(ex), "no exception");
+    return csv::ROW_DROP;
+  });
+  auto r = parser.ParseStream(input);
+  EXPECT_TRUE(r, parser.ErrorString());
+  EXPECT_EQ(3, free_func_total_a);
+  EXPECT_EQ(4, free_func_total_b);
+  EXPECT_TRUEB(handler_called, "handler not called");
+}
 
 #define run(fp)                           \
   std::cout << "[START] " << #fp << "\n"; \
@@ -287,6 +331,8 @@ int main(int, char**) {
   run(test_template_func);
   run(test_free_func);
   run(test_parse_stream);
+  run(test_bad_cast);
+  run(test_bad_cast_callback);
   std::cout << (errors ? "ERRORS!\n" : "Ok\n");
   return errors;
 }

@@ -1,4 +1,5 @@
 #include <csv.h>
+#include <iostream>
 #include <boost/lexical_cast.hpp>
 
 #include <fcntl.h>
@@ -133,7 +134,8 @@ class fields<R(Args...)> {
   }
   template <typename F, typename... Fa>
   void setupFieldHandlers(F& arg, Fa&... args) {
-    mutators.push_back([&arg](const char* buf, size_t len) {
+    size_t field_num = mutators.size();
+    mutators.push_back([field_num, &arg](const char* buf, size_t len) {
       if (len > 0) {
         arg = boost::lexical_cast<F>(buf, len);
       } else {
@@ -167,6 +169,9 @@ class CsvParser {
   // return true if field should cause row to be ignored
   using filter_function_type = std::function<
       filter_result(size_t field_num, const char* buf, size_t len)>;
+  using error_callback_type = std::function<
+      filter_result(size_t line_number, size_t field_number,
+                    const std::string& error_message, std::exception_ptr ex)>;
   CsvParser(const F& sink) : sink{sink} { csv_init(&parser, 0); }
   ~CsvParser() { csv_free(&parser); }
 
@@ -174,6 +179,7 @@ class CsvParser {
   void set_delim_char(unsigned char delim) { parser.delim_char = delim; }
   void set_quote_char(unsigned char quote) { parser.quote_char = quote; }
   void set_skip_header() { skip_row = true; }
+  void set_error_func(const error_callback_type func) { error_func = func; }
   void set_comment_mark(const std::string& prefix) {
     auto is_comment = [prefix](size_t field_num, const char* buf, size_t len) {
       return field_num == 0 &&          //
@@ -243,14 +249,28 @@ class CsvParser {
   detail::Result status;
   filter_function_type filter_func = [](size_t, const char*,
                                         size_t) { return ROW_OK; };
+  error_callback_type error_func = [](size_t row, size_t column,
+                                      const std::string& err,
+                                      const std::exception_ptr) {
+    std::cerr << "[csv.hpp] Exception at row " << row << ", column " << column << ": "
+              << err << "\n";
+    return ROW_DROP;
+  };
   bool skip_row{false};
+  size_t current_line = 0;
   size_t current_field = 0;
 
  private:
   void accept_field(const char* buf, size_t len) {
     skip_row = skip_row || filter_func(current_field, buf, len);
     if (!skip_row) {
-      fields.accept_field(current_field, buf, len);
+      try {
+        fields.accept_field(current_field, buf, len);
+      }
+      catch (std::exception& e) {
+        skip_row = error_func(current_line + 1, current_field + 1, e.what(),
+                              std::current_exception());
+      }
     }
     ++current_field;
   }
@@ -261,6 +281,7 @@ class CsvParser {
       skip_row = false;
     }
     current_field = 0;
+    ++current_line;
   }
   const detail::Result& update_status() {
     if (status.number == 0 && parser.status != 0) {
