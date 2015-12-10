@@ -32,17 +32,9 @@ std::ostream& operator<<(std::ostream& os, const std::map<T1, T2>& map) {
   return os;
 }
 
-template <typename T, typename S>
-static void EXPECT_TRUE(T& bool_conv, S& message) {
-  if (bool_conv)
-    return;
-  ++errors;
-  std::cout << "[ERROR] " << bool_conv << ":" << message << "\n";
-}
-
 template <typename S>
-static void EXPECT_TRUEB(bool test, S& message) {
-  if (test)
+static void EXPECT_TRUE(bool val, S& message) {
+  if (val)
     return;
   ++errors;
   std::cout << "[ERROR] " << message << "\n";
@@ -296,15 +288,15 @@ static void test_bad_cast_callback() {
     handler_called = true;
     EXPECT_EQ(size_t(1), row);
     EXPECT_EQ(size_t(2), column);
-    EXPECT_TRUEB(!message.empty(), "empty message");
-    EXPECT_TRUEB(bool(ex), "no exception");
+    EXPECT_TRUE(!message.empty(), "empty message");
+    EXPECT_TRUE(bool(ex), "no exception");
     return csv::ROW_DROP;
   });
   auto r = parser.ParseStream(input);
   EXPECT_TRUE(r, parser.ErrorString());
   EXPECT_EQ(3, free_func_total_a);
   EXPECT_EQ(4, free_func_total_b);
-  EXPECT_TRUEB(handler_called, "handler not called");
+  EXPECT_TRUE(handler_called, "handler not called");
 }
 
 #define run(fp)                           \
