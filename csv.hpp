@@ -252,8 +252,8 @@ class CsvParser {
   error_callback_type error_func = [](size_t row, size_t column,
                                       const std::string& err,
                                       const std::exception_ptr) {
-    std::cerr << "[csv.hpp] Exception at row " << row << ", column " << column << ": "
-              << err << "\n";
+    std::cerr << "[csv.hpp] Exception at row " << row << ", column " << column
+              << ": " << err << "\n";
     return ROW_DROP;
   };
   bool skip_row{false};
@@ -297,4 +297,15 @@ CsvParser<F> make_parser(F&& f) {
   return CsvParser<F>(f);
 }
 
+// used to ignore input fields
+struct ignore {};
+
 }  // namespace csv
+
+namespace boost {
+template <>
+csv::ignore lexical_cast(const char*, size_t) {
+  static csv::ignore instance;
+  return instance;
+}
+}

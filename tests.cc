@@ -65,6 +65,20 @@ static void test_spaces() {
   EXPECT_EQ(expected, words);
 }
 
+static void test_ignore_field() {
+  std::string csv_data = "hi there\nhow are\nyou doing\n";
+  std::vector<std::string> words;
+  auto f = [&words](const csv::ignore&,
+                    const std::string& b) { words.push_back(b); };
+  auto parser = csv::make_parser(f);
+  parser.set_delim_char(' ');
+  auto r = parser.Parse(csv_data) && parser.Finish();
+  EXPECT_TRUE(r, parser.ErrorString());
+
+  std::vector<std::string> expected = {"there", "are", "doing"};
+  EXPECT_EQ(expected, words);
+}
+
 static void test_header() {
   std::string csv_data = "name num\nlarry 1\nmary 3\n";
   std::map<std::string, uint32_t> values;
@@ -314,6 +328,7 @@ int main(int, char**) {
   run(test_number_file);
   run(test_grouping);
   run(test_spaces);
+  run(test_ignore_field);
   run(test_header);
   run(test_comments);
   run(test_filter);
