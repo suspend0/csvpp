@@ -307,7 +307,7 @@ struct ignore {};
 
 namespace boost {
 template <>
-csv::ignore lexical_cast(const char*, size_t) {
+inline csv::ignore lexical_cast(const char*, size_t) {
   static csv::ignore instance;
   return instance;
 }
