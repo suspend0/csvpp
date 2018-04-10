@@ -1,6 +1,7 @@
 #pragma once
 
 #include <csv.h>
+#include <vector>
 #include <iostream>
 #include <boost/lexical_cast.hpp>
 
